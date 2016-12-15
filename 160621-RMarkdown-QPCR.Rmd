@@ -1,0 +1,97 @@
+---
+title: "160621-RMarkdown-QPCR.Rmd"
+output: word_document
+---
+
+Strain : Sb
+
+```{r,echo=FALSE}
+require(car)
+
+doss<-read.csv2("doss.csv",header=TRUE,sep=";",dec=".")
+
+
+```
+Summary
+
+```{r,echo=FALSE}
+
+summary(doss)
+
+tab<-data.frame(table(doss$ASSAY),tapply(doss$QUANTITY,doss$ASSAY,mean,na.rm=TRUE),tapply(doss$QUANTITY,doss$ASSAY,sd,na.rm=TRUE))
+tab<-tab[,2:4]
+names(tab)<-c("Freq","Mean","Sd")
+bou<-max(tab$Mean+2*tab$Sd)
+
+tab1<-tab
+tab1$Mean<-format(tab$Mean,scientific=TRUE,digits=3)
+tab1$Sd<-format(tab$Sd,scientific=TRUE,digits=3)
+tab1
+
+par(mfcol=c(1,2))
+boxplot(doss$QUANTITY~doss$ASSAY,xlab="Zinc concentration (mM)",ylab="Quantity (# Genome)")
+barplot(tab$Sd+tab$Mean,width=1,space=3,col="white")
+#,ylim=c(0,bou))
+barplot(tab$Mean,,width=1,space=3,col="black",names.arg=FALSE,add=TRUE)
+barplot(tab$Mean-tab$Sd,width=1,space=3,col="white",add=TRUE)
+```
+
+Normality tests for Quantity and residus
+
+Normality Tests: Shapiro-Wilk
+If Shapiro-Wilk p-value > 0.05 => Normality, else, use Wilcoxon
+
+```{r,echo=FALSE}
+
+shapiro.test(doss$QUANTITY)
+
+
+```
+
+Test d'homosc?dasticit?: Bartlett test
+If p-value>0.05, then run ANOVA, else run Kruskal- Wallis
+
+```{r,echo=FALSE}
+
+bartlett.test(doss$QUANTITY~doss$ASSAY)
+```
+
+
+Statistical test: Anova
+
+```{r,echo=FALSE}
+drop1(lm(doss$QUANTITY~doss$ASSAY),.~.,test="F")
+```
+Post-hoc multiple T-test
+
+```{r,echo=FALSE}
+pairwise.t.test(doss$QUANTITY,doss$ASSAY,paired=FALSE,p.adjust.method="bonferroni")
+```
+
+Statistical test: Kruskal- Wallis
+
+```{r,echo=FALSE}
+kruskal.test(doss$QUANTITY~doss$ASSAY,na.action=na.omit)
+```
+
+
+Post-hoc Kruskal-Wallis
+Dunn or Nemenyi ? and co test (by ranking)
+
+```{r,echo=FALSE}
+library(PMCMR)
+
+posthoc.kruskal.nemenyi.test(doss$QUANTITY,doss$ASSAY,dist="Tukey",na.action=na.omit)
+
+#posthoc.kruskal.dunn.test(doss$QUANTITY,doss$ASSAY,p.adjust.method="bonferroni")
+#same stuffs more or less... A bit less OK for some ^^
+
+
+#dunn.test provides Dunn's (1964) z test approximation to a rank sum test employing both the same ranks used in the Kruskal-Wallis test, and the pooled variance estimate implied by the null hypothesis of the Kruskal-Wallis (akin to using the pooled variance to calculate t test statistics following an ANOVA).
+
+#By contrast, the Kruskal-Nemenyi test as implemented in posthoc.kruskal.nemenyi.test is based on either the Studentized range distribution, or the ??2 distribution depending on user choice.
+
+```
+
+
+
