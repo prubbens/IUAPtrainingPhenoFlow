@@ -9,7 +9,7 @@ dataloc <- "/media/projects2/IUAPworkshop" #folder containing all your fcs files
 
 #### load required packages ####
 library(Phenoflow)
-
+library(ggplot2)
 #### set RNG seed for reproducibility ####
 set.seed(777)
 
@@ -61,7 +61,7 @@ flowData_transformed <- FCS_resample(flowData_transformed, replace=FALSE)
 fbasis <- flowBasis(flowData_transformed, param, nbin=128, 
                     bw=0.01,normalize=function(x) x)
 
-### Calculate ecological parameters from normalized fingerprint 
+#### Calculate ecological parameters from normalized fingerprint ####
 ### Densities will be normalized to the interval [0,1]
 ### n = number of replicates
 ### d = rounding factor
@@ -71,18 +71,42 @@ Structural.organization.fbasis <- So(fbasis,d=3,n=1,plot=TRUE) #Structural Organ
 Coef.var.fbasis <- CV(fbasis,d=3,n=1,plot=TRUE) # Coefficient of Variation (CV) 
 
 
-### Export ecological data to .csv file in the chosen directory
+#### Export ecological data to .csv file in the chosen directory ####
 write.csv2(file="results.metrics.csv",
            cbind(Diversity.fbasis, Evenness.fbasis,
                  Structural.organization.fbasis,
                  Coef.var.fbasis))
+#### extract metadata ####
+evennessclass <- sub("(^.+?)\\_.*$","\\1",as.character(Diversity.fbasis$Sample_name))
+timepoint <- sub("(^.+?)\\_.*(t[15]).*$","\\2",as.character(Diversity.fbasis$Sample_name))
 
-### Beta-diversity assessment of fingerprint
-beta.div <- beta_div_fcm(fbasis, ord.type="PCoA")
-plot_beta_fcm(beta.div, legend.pres=FALSE)
+Diverstity.fbasis.meta <- data.frame(Diversity.fbasis,
+                                     initial_even=evennessclass,
+                                     time=timepoint)
 
 
-### Creating a rectangle gate for counting HNA and LNA cells
+#### Compare alpha diversity ####
+alphacompgg.D0 <- ggplot(data=Diverstity.fbasis.meta,
+                      aes(x=time,y=D0,fill=initial_even))
+
+alphacompgg.D0 + geom_boxplot()
+
+alphacompgg.D2 <- ggplot(data=Diverstity.fbasis.meta,
+                         aes(x=time,y=D2,fill=initial_even))
+
+alphacompgg.D2 + geom_boxplot()
+
+#### Beta-diversity assessment of fingerprint ####
+beta.div <- beta_div_fcm(fbasis, ord.type="NMDS", dist="jaccard", iter=20)
+
+plot_beta_fcm(beta.div,color = evennessclass,shape = timepoint,
+              labels=c(levels(factor(evennessclass)),levels(factor(timepoint))))
+
+
+#### Creating a rectangle gate for counting HNA and LNA cells ####
+# this also exports the exact cell densities
+#only valid for data gathered on BD C6 accuri FC!
+# HN/LNA according to PRest et al.
 rGate_HNA <- rectangleGate("FL1-H"=c(asinh(20000), 20)/max,"FL3-H"=c(0,20)/max, 
                            filterId = "HNA bacteria")
 ### Normalize total cell gate
