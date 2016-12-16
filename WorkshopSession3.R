@@ -1,7 +1,7 @@
 #### only execute first time on your own machine ####
 # install.packages(devtools)
 # library(devtools)
-# install_github(rprops/Phenoflow_package)
+# install_github("rprops/Phenoflow_package")
 
 
 #### set data directory ####
